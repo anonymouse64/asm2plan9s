@@ -28,22 +28,29 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"unicode"
 )
 
-type Compiler int
+type arrayFlags []string
+
+func (i *arrayFlags) String() string {
+	return "my string representation"
+}
+
+func (i *arrayFlags) Set(value string) error {
+	*i = append(*i, value)
+	return nil
+}
+
+var assemblerOptions arrayFlags
 
 var assembler = flag.String("as", "gas", "assembler to use")
-var assemblerString string
 var fileOpt = flag.String("file", "", "file to assemble")
 
-const (
-	GAS Compiler = iota
-	ARMCC
-	YASM
-)
+var assemblerString string
 
 type Instruction struct {
 	instruction string
@@ -131,23 +138,17 @@ func genericAssembler(instructions []Instruction) error {
 	switch {
 	case strings.Contains(assemblerString, "yasm"):
 		return yasm(instructions)
-	case strings.Contains(assemblerString, "gcc"):
-		return gas(instructions)
+	case strings.Contains(assemblerString, "gcc") || strings.Contains(assemblerString, "gnu"):
+		// use gas to compile - check what architecture to use
+		if strings.Contains(assemblerString, "arm") {
+			return gas(assemblerString, instructions, "arm")
+		}
+		return gas(assemblerString, instructions, "amd64")
 	case strings.Contains(assemblerString, "armcc"):
-		return fmt.Errorf("TODO : armcc not supported yet")
+		fallthrough
+	default:
+		return fmt.Errorf("%s is not supported yet\n", assemblerString)
 	}
-}
-
-// as: assemble instruction by either invoking yasm or gas
-func as(instructions []Instruction) error {
-
-	// First to yasm (will return error when not installed)
-	e := yasm(instructions)
-	if e == nil {
-		return e
-	}
-	// Try gas if yasm not installed
-	return gas(instructions)
 }
 
 // See below for YASM support (older, no AVX512)
@@ -173,14 +174,17 @@ func as(instructions []Instruction) error {
 // 3      DBC2
 //
 
-func gas(instructions []Instruction) error {
+func gas(assemblerExec string, instructions []Instruction, arch string) error {
 
 	tmpfile, err := ioutil.TempFile("", "asm2plan9s")
 	if err != nil {
 		return err
 	}
-	if _, err := tmpfile.Write([]byte(fmt.Sprintf(".intel_syntax noprefix\n"))); err != nil {
-		return err
+	// only write out the intel syntax if we're on amd64
+	if arch == "amd64" {
+		if _, err := tmpfile.Write([]byte(fmt.Sprintf(".intel_syntax noprefix\n"))); err != nil {
+			return err
+		}
 	}
 
 	for _, instr := range instructions {
@@ -209,7 +213,12 @@ func gas(instructions []Instruction) error {
 	defer os.Remove(objFile) // clean up
 
 	// as -o example.o -al=example.lis example.s
-	app := "as"
+	var app string
+	if len(assemblerExec) == 0 {
+		app = "as"
+	} else {
+		app = assemblerExec
+	}
 
 	arg0 := "-o"
 	arg1 := objFile
@@ -581,9 +590,12 @@ func assemble(lines []string, compact bool) (result []string, err error) {
 		return result, err
 	}
 
+	fmt.Printf("assembler is %+v\n", a)
+
 	assemblerString = strings.ToLower(*assembler)
 	if assemblerString == "gas" {
-		err = gas(a.Instructions)
+		// use default location of assembler and whatever architecture we are on as best guess values
+		err = gas("", a.Instructions, runtime.GOARCH)
 	} else if assemblerString == "yasm" {
 		err = yasm(a.Instructions)
 	} else if _, err = os.Stat(assemblerString); err == nil {
@@ -612,7 +624,7 @@ func assemble(lines []string, compact bool) (result []string, err error) {
 }
 
 func main() {
-
+	flag.Var(&assemblerOptions, "as-opts", "Assembler options to use")
 	flag.Parse()
 
 	var file = *fileOpt
