@@ -14,7 +14,7 @@ func ToPlan9s(opcodes []byte, instr string, commentPos int, inDefine bool) (stri
 		if i != 0 {
 			sline += "; "
 		}
-		sline += fmt.Sprintf("QUAD $0x%02x%02x%02x%02x%02x%02x%02x%02x", opcodes[7], opcodes[6], opcodes[5], opcodes[4], opcodes[3], opcodes[2], opcodes[1], opcodes[0])
+		sline += fmt.Sprintf("QUAD $0x%02x%02x%02x%02x%02x%02x%02x%02x", opcodes[0], opcodes[1], opcodes[2], opcodes[3], opcodes[4], opcodes[5], opcodes[6], opcodes[7])
 
 		opcodes = opcodes[8:]
 	}
@@ -23,7 +23,7 @@ func ToPlan9s(opcodes []byte, instr string, commentPos int, inDefine bool) (stri
 		if i != 0 {
 			sline += "; "
 		}
-		sline += fmt.Sprintf("LONG $0x%02x%02x%02x%02x", opcodes[3], opcodes[2], opcodes[1], opcodes[0])
+		sline += fmt.Sprintf("LONG $0x%02x%02x%02x%02x", opcodes[0], opcodes[1], opcodes[2], opcodes[3])
 
 		opcodes = opcodes[4:]
 	}
@@ -34,7 +34,7 @@ func ToPlan9s(opcodes []byte, instr string, commentPos int, inDefine bool) (stri
 		if i != 0 {
 			sline += "; "
 		}
-		sline += fmt.Sprintf("WORD $0x%02x%02x", opcodes[1], opcodes[0])
+		sline += fmt.Sprintf("WORD $0x%02x%02x", opcodes[0], opcodes[1])
 
 		i++
 		opcodes = opcodes[2:]
