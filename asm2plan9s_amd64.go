@@ -26,7 +26,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"unicode"
 )
 
 // as: assemble instruction by either invoking yasm or gas
@@ -128,7 +127,7 @@ func gas(instructions []Instruction) error {
 	}
 
 	for i, opcode := range opcodes {
-		assembled, err := toPlan9s(opcode, instructions[i].instruction, instructions[i].commentPos, instructions[i].inDefine)
+		assembled, err := plan9s.ToPlan9s(opcode, instructions[i].instruction, instructions[i].commentPos, instructions[i].inDefine)
 		if err != nil {
 			return err
 		}
@@ -190,77 +189,6 @@ func toPlan9sGas(listFile string) ([][]byte, error) {
 	opcodes = append(opcodes, opcode)
 
 	return opcodes, nil
-}
-
-func toPlan9s(opcodes []byte, instr string, commentPos int, inDefine bool) (string, error) {
-	sline := "    "
-	i := 0
-	// First do QUADs (as many as needed)
-	for ; len(opcodes) >= 8; i++ {
-		if i != 0 {
-			sline += "; "
-		}
-		sline += fmt.Sprintf("QUAD $0x%02x%02x%02x%02x%02x%02x%02x%02x", opcodes[7], opcodes[6], opcodes[5], opcodes[4], opcodes[3], opcodes[2], opcodes[1], opcodes[0])
-
-		opcodes = opcodes[8:]
-	}
-	// Then do LONGs (as many as needed)
-	for ; len(opcodes) >= 4; i++ {
-		if i != 0 {
-			sline += "; "
-		}
-		sline += fmt.Sprintf("LONG $0x%02x%02x%02x%02x", opcodes[3], opcodes[2], opcodes[1], opcodes[0])
-
-		opcodes = opcodes[4:]
-	}
-
-	// Then do a WORD (if needed)
-	if len(opcodes) >= 2 {
-
-		if i != 0 {
-			sline += "; "
-		}
-		sline += fmt.Sprintf("WORD $0x%02x%02x", opcodes[1], opcodes[0])
-
-		i++
-		opcodes = opcodes[2:]
-	}
-
-	// And close with a BYTE (if needed)
-	if len(opcodes) == 1 {
-		if i != 0 {
-			sline += "; "
-		}
-		sline += fmt.Sprintf("BYTE $0x%02x", opcodes[0])
-
-		i++
-		opcodes = opcodes[1:]
-	}
-
-	if inDefine {
-		if commentPos > commentPos-2-len(sline) {
-			if commentPos-2-len(sline) > 0 {
-				sline += strings.Repeat(" ", commentPos-2-len(sline))
-			}
-		} else {
-			sline += " "
-		}
-		sline += `\ `
-	} else {
-		if commentPos > len(sline) {
-			if commentPos-len(sline) > 0 {
-				sline += strings.Repeat(" ", commentPos-len(sline))
-			}
-		} else {
-			sline += " "
-		}
-	}
-
-	if instr != "" {
-		sline += "//" + instr
-	}
-
-	return strings.TrimRightFunc(sline, unicode.IsSpace), nil
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -353,6 +281,6 @@ func toPlan9sYasm(objFile, instr string, commentPos int, inDefine bool) (string,
 		return "", nil, err
 	}
 
-	s, err := toPlan9s(opcodes, instr, commentPos, inDefine)
+	s, err := plan9s.ToPlan9s(opcodes, instr, commentPos, inDefine)
 	return s, opcodes, err
 }

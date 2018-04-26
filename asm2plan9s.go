@@ -23,6 +23,8 @@ import (
 	"log"
 	"os"
 	"strings"
+
+	"github.com/anonymouse64/asm2plan9s/plan9s"
 )
 
 type Instruction struct {
@@ -135,7 +137,7 @@ func (a *Assembler) combineLines() {
 			startIndex, startLine = i, ins.lineno
 		}
 		if ins.lineno != startLine+(i-startIndex) { // we have found a non-consecutive line
-			combiAssem, _ := toPlan9s(opcodes, "", 0, false)
+			combiAssem, _ := plan9s.ToPlan9s(opcodes, "", 0, false)
 			combiIns := Instruction{assembled: combiAssem, lineno: startLine, inDefine: false}
 
 			combined = append(combined, combiIns)
@@ -145,7 +147,7 @@ func (a *Assembler) combineLines() {
 		opcodes = append(opcodes, ins.opcodes...)
 	}
 	if len(opcodes) > 0 {
-		combiAssem, _ := toPlan9s(opcodes, "", 0, false)
+		combiAssem, _ := plan9s.ToPlan9s(opcodes, "", 0, false)
 		ins := Instruction{assembled: combiAssem, lineno: startLine, inDefine: false}
 
 		combined = append(combined, ins)
